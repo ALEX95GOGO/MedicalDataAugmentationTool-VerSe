@@ -3,6 +3,21 @@
 ## Usage
 This code has been used for the Verse2019 and Verse2020 challenges, as well as the paper [Coarse to Fine Vertebrae Localization and Segmentation with SpatialConfiguration-Net and U-Net](https://doi.org/10.5220/0008975201240133). Look into the subfolders `verse2019` and `verse2020` for running the code and further instructions.  
 
+## Required Packages
+The required python packages include `tensorflow-gpu==2.2.0`, `SimpleITK==1.2.4`, `itk==5.1.1`, `scikit-image==0.17.2`, `tqdm==4.51.0`, `networkx==2.5`, `Pyro4==4.80`.
+
+## Dataset preprocessing
+Download the files from the [challenge website](https://verse2020.grand-challenge.org/) and copy them to the folder `verse2020_dataset/images`. The framework expects that the `.nii.gz` files are directly in the folder `verse2020_dataset/images`, e.g., `verse2020_dataset/images/GL003.nii.gz`. In order for the framework to be able to load the data, every image needs to be reoriented to RAI. The following script in the folder `other` performs the reorientation to RAI and Gaussian smoothing for all images:
+
+`cd verse2020/other`
+
+`python preprocess.py --image_folder ../verse2020_dataset/images --output_folder ../verse2020_dataset/images_reoriented --sigma 0.75`
+
+## Landmark detection training
+In the folder `training` there are the scripts for training the vertebrae localization networks. Currently they are set up to train the three cross-validation folds as well as train on the whole training set. If you want to see the augmented network input images, set `self.save_debug_images = True`. This will save the images into the folders `debug_train` and `debug_val`. However, as every augmented images will be saved to the hard disk, this could lead to longer training times on slow computers.
+
+`python training/main_vertebrae_localization.py`
+
 ## Citation
 If you use this code for your research, please cite our [paper](https://doi.org/10.5220/0008975201240133) and the overview paper of the [Verse2019 challenge](https://arxiv.org/abs/2001.09193):
 
