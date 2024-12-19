@@ -4,7 +4,7 @@ import pickle
 import socket
 from collections import OrderedDict
 import sys
-sys.path.append('../MedicalDataAugmentationTool')
+sys.path.append('../MedicalDataAugmentationTool_copy')
 
 import numpy as np
 import tensorflow as tf
