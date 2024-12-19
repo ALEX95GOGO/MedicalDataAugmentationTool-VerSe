@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import socket
 from collections import OrderedDict
+import sys
+sys.path.append('MedicalDataAugmentationTool')
 
 import numpy as np
 import tensorflow as tf
@@ -14,13 +16,15 @@ from dataset import Dataset
 from datasets.pyro_dataset import PyroClientDataset
 from network import Unet
 from spine_localization_postprocessing import bb, bb_iou
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
+#from tensorflow.keras.mixed_precision import experimental as mixed_precision
+from tensorflow.keras.mixed_precision import set_global_policy
 from tensorflow_train_v2.dataset.dataset_iterator import DatasetIterator
 from tensorflow_train_v2.train_loop import MainLoopBase
 from tensorflow_train_v2.utils.data_format import get_batch_channel_image_size
 from tensorflow_train_v2.utils.loss_metric_logger import LossMetricLogger
 from tensorflow_train_v2.utils.output_folder_handler import OutputFolderHandler
 from tqdm import tqdm
+from tensorflow.keras.mixed_precision import LossScaleOptimizer
 
 
 class MainLoop(MainLoopBase):
@@ -31,10 +35,11 @@ class MainLoop(MainLoopBase):
         :param config: config dictionary
         """
         super().__init__()
-        self.use_mixed_precision = True
+        self.use_mixed_precision = False
         if self.use_mixed_precision:
-            policy = mixed_precision.Policy('mixed_float16')
-            mixed_precision.set_policy(policy)
+            #policy = mixed_precision.Policy('mixed_float16')
+            #mixed_precision.set_policy(policy)
+            set_global_policy('mixed_float16')
         self.cv = cv
         self.config = config
         self.batch_size = 1
@@ -58,11 +63,11 @@ class MainLoop(MainLoopBase):
             self.network = Unet
         self.clip_gradient_global_norm = 100000.0
 
-        self.use_pyro_dataset = True
+        self.use_pyro_dataset = False
         self.save_output_images = True
-        self.save_debug_images = False
+        self.save_debug_images = True
         self.has_validation_groundtruth = cv in [0, 1, 2]
-        self.local_base_folder = '../verse2020_dataset'
+        self.local_base_folder = './verse2020_dataset'
         self.image_size = [None, None, None]
         self.image_spacing = [config.spacing] * 3
         self.sigma_regularization = 100.0
@@ -90,8 +95,10 @@ class MainLoop(MainLoopBase):
         self.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(self.learning_rate, self.max_iter, 0.1)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
         if self.use_mixed_precision:
-            self.optimizer = mixed_precision.LossScaleOptimizer(self.optimizer,
-                                                                loss_scale=tf.mixed_precision.experimental.DynamicLossScale(initial_loss_scale=2 ** 15, increment_period=1000))
+            self.optimizer = LossScaleOptimizer(self.optimizer, dynamic=True)
+        #if self.use_mixed_precision:
+        #    self.optimizer = mixed_precision.LossScaleOptimizer(self.optimizer,
+        #                                                        loss_scale=tf.mixed_precision.experimental.DynamicLossScale(initial_loss_scale=2 ** 15, increment_period=1000))
 
     def init_checkpoint(self):
         """
@@ -141,7 +148,7 @@ class MainLoop(MainLoopBase):
                 raise e
         else:
             self.dataset_train = dataset.dataset_train()
-
+        print(self.dataset_train.get_next())
         self.dataset_val = dataset.dataset_val()
         self.network_image_size = list(reversed(self.image_size))
 
@@ -159,7 +166,8 @@ class MainLoop(MainLoopBase):
                                                   data_names_and_shapes=data_generator_entries,
                                                   data_types=data_generator_types,
                                                   batch_size=self.batch_size)
-
+        print(self.dataset_train_iter.get_next())
+        
     def init_loggers(self):
         """
         Init self.loss_metric_logger_train, self.loss_metric_logger_val.
@@ -200,17 +208,24 @@ class MainLoop(MainLoopBase):
         losses['loss_net'] = self.loss_function(target=target_heatmap, pred=prediction)
         return prediction, losses
 
-    @tf.function
+    #@tf.function
     def train_step(self):
         """
         Perform a training step.
         """
         image, target_landmarks, image_id = self.dataset_train_iter.get_next()
+        print(image.shape)
+        print(target_landmarks.shape)
+        print(image_id.shape)
         with tf.GradientTape() as tape:
-            _, losses = self.call_model_and_loss(image, target_landmarks, training=True)
+            #_, losses = self.call_model_and_loss(image, target_landmarks, training=True)
+            prediction = self.model(image, training=True)
+            losses = {}
+            losses['loss_net'] = self.loss_function(target=target_landmarks, pred=prediction)
             if self.reg_constant > 0:
                 losses['loss_reg'] = self.reg_constant * tf.reduce_sum(self.model.losses)
             loss = tf.reduce_sum(list(losses.values()))
+            print('loss', loss)
             if self.use_mixed_precision:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
         variables = self.model.trainable_weights
@@ -230,8 +245,59 @@ class MainLoop(MainLoopBase):
             self.norm_moving_average.assign(alpha * tf.minimum(norm, clip_norm) + (1 - alpha) * self.norm_moving_average)
         metric_dict.update({'norm': norm, 'norm_average': self.norm_moving_average})
         self.optimizer.apply_gradients(zip(grads, variables))
-
         self.loss_metric_logger_train.update_metrics(metric_dict)
+    
+    def print_training_parameters(self):
+        """
+        Print training parameters.
+        """
+        print('Training parameters:')
+        if self.optimizer is not None:
+            print('Optimizer: ', self.optimizer)
+        if self.batch_size is not None:
+            print('Batch size:', self.batch_size)
+        if self.learning_rate is not None:
+            print('Learning rate:', self.learning_rate)
+        if self.max_iter is not None:
+            print('Max iterations:', self.max_iter)
+        if self.output_folder_handler is not None:
+            print('Output folder:', self.output_folder_handler.folder_base())
+
+    def run(self):
+        """
+        Init all and run train loop.
+        """
+        try:
+            self.init_all()
+            if self.load_model_filename is not None:
+                self.load_model()
+            print('Starting main loop')
+            self.print_training_parameters()
+            self.train()
+        finally:
+            self.close_all()
+
+    def train(self):
+        """
+        Run the train loop.
+        """
+        while self.current_iter <= self.max_iter:
+            # snapshot
+            if (self.current_iter % self.snapshot_iter) == 0 and not self.first_iteration:
+                self.save_model()
+            # test
+            if (self.current_iter % self.test_iter) == 0 and (self.test_initialization or not self.first_iteration):
+                self.test()
+            # do not train in last iteration
+            if self.current_iter < self.max_iter:
+                self.train_step()
+                # display loss and save summary
+                if self.loss_metric_logger_train is not None and (self.current_iter % self.disp_iter) == 0:
+                    summary_values = self.loss_metric_logger_train.finalize(self.current_iter)
+                    # check if current loss is nan and if training should be stopped
+                    if self.raise_on_nan_loss and self.loss_name_for_nan_loss_check in summary_values:
+                        if np.isnan(summary_values[self.loss_name_for_nan_loss_check]):
+                            raise RuntimeError('\'{}\' is nan'.format(self.loss_name_for_nan_loss_check))                                                                                                                                   
 
     def test_full_image(self, dataset_entry):
         """
@@ -311,7 +377,8 @@ class dotdict(dict):
 
 
 if __name__ == '__main__':
-    for cv in [0, 1, 2, 'train_all']:
+    #for cv in [0, 1, 2, 'train_all']:
+    for cv in ['train_all']:
         # Set hyperparameters
         hyperparameter_defaults = dotdict(
             num_filters_base=96,

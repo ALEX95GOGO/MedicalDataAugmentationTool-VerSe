@@ -1,19 +1,16 @@
 verse413_verse272_CT-iso
 verse409_verse226_CT-iso
 verse586_CT-iso
-verse112_CT-iso
 GL240_CT-ax
 verse075
 verse415_verse243_CT-sag
 verse824_CT-iso
 verse145
 verse818_CT-iso
-verse257
 verse088
 verse127
 verse413_verse239_CT-iso
 verse811_CT-ax
-verse139
 verse577_CT-iso
 GL453_CT-ax
 GL090_CT-ax
@@ -37,7 +34,6 @@ GL364_CT-ax
 verse415_verse275_CT-sag
 verse410_verse267_CT-iso
 verse642_CT-sag
-verse141
 verse031
 verse405_verse259_CT-sag
 verse005
@@ -67,7 +63,6 @@ verse629_CT-iso
 verse521
 verse082_CT-iso
 GL247
-verse151
 verse408_verse223_CT-iso
 verse532
 verse631_CT-sag

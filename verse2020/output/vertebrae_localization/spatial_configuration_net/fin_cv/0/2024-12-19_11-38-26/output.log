@@ -1,0 +1,11 @@
+loaded 76 ids
+loaded 76 ids
+loaded 37 ids
+loaded 37 ids
+Starting main loop
+Training parameters:
+Optimizer:  <keras.optimizers.optimizer_experimental.adam.Adam object at 0x153ea80ee6a0>
+Batch size: 1
+Learning rate: <keras.optimizers.schedules.learning_rate_schedule.ExponentialDecay object at 0x153ea80ee490>
+Max iterations: 50000
+Output folder: ./output/vertebrae_localization/spatial_configuration_net/fin_cv/0/2024-12-19_11-38-26

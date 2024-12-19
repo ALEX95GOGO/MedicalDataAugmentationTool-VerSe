@@ -30,7 +30,6 @@ verse629_CT-iso
 verse521
 verse082_CT-iso
 GL247
-verse151
 verse408_verse223_CT-iso
 verse532
 verse631_CT-sag

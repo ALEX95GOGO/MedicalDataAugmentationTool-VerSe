@@ -89,6 +89,6 @@ if __name__ == '__main__':
     if not os.path.exists(parser_args.output_folder):
         os.makedirs(parser_args.output_folder)
     
-    filenames = glob(os.path.join(parser_args.image_folder, '*.nii.gz'))
+    filenames = glob(os.path.join(parser_args.image_folder,'**', '*.nii.gz'))
     pool = multiprocessing.Pool(8)
     pool.starmap(process_image, [(filename, parser_args.output_folder, parser_args.sigma) for filename in sorted(filenames)])

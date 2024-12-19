@@ -24,17 +24,12 @@ verse096
 verse097
 verse104_CT-iso
 verse111
-verse112_CT-iso
 verse113
 verse122
 verse127
 verse135
-verse139
-verse141
 verse145
-verse151
 verse254
-verse257
 verse401_verse201_CT-iso
 verse401_verse253_CT-iso
 verse402_verse202_CT-sag

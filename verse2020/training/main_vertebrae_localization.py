@@ -3,6 +3,8 @@
 import pickle
 import socket
 from collections import OrderedDict
+import sys
+sys.path.append('../MedicalDataAugmentationTool')
 
 import numpy as np
 import tensorflow as tf
@@ -14,7 +16,9 @@ import utils.sitk_np
 from dataset import Dataset
 from datasets.pyro_dataset import PyroClientDataset
 from network import SpatialConfigurationNet, Unet
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
+#from tensorflow.keras.mixed_precision import experimental as mixed_precision
+from tensorflow.keras.mixed_precision import set_global_policy
+
 from tensorflow_train_v2.dataset.dataset_iterator import DatasetIterator
 from tensorflow_train_v2.train_loop import MainLoopBase
 from tensorflow_train_v2.utils.data_format import get_batch_channel_image_size
@@ -39,7 +43,7 @@ class MainLoop(MainLoopBase):
         :param config: config dictionary
         """
         super().__init__()
-        self.use_mixed_precision = True
+        self.use_mixed_precision = False
         if self.use_mixed_precision:
             policy = mixed_precision.Policy('mixed_float16')
             mixed_precision.set_policy(policy)
@@ -51,7 +55,7 @@ class MainLoop(MainLoopBase):
         self.learning_rate_boundaries = [50000, 75000]
         self.has_validation_groundtruth = cv in [0, 1, 2]
         self.max_iter = 50000
-        self.test_iter = 5000 if self.has_validation_groundtruth else self.max_iter
+        self.test_iter = 500 if self.has_validation_groundtruth else self.max_iter
         self.disp_iter = 100
         self.snapshot_iter = 5000
         self.test_initialization = False
@@ -76,10 +80,10 @@ class MainLoop(MainLoopBase):
         self.clip_gradient_global_norm = 10000.0
 
         self.evaluate_landmarks_postprocessing = True
-        self.use_pyro_dataset = True
+        self.use_pyro_dataset = False
         self.save_output_images = True
-        self.save_debug_images = False
-        self.local_base_folder = '../verse2020_dataset'
+        self.save_debug_images = True
+        self.local_base_folder = './verse2020_dataset'
         self.image_size = [None, None, None]
         self.image_spacing = [config.spacing] * 3
         self.max_image_size_for_cropped_test = [128, 128, 448]
@@ -265,6 +269,9 @@ class MainLoop(MainLoopBase):
         Perform a training step.
         """
         image, target_landmarks, image_id = self.dataset_train_iter.get_next()
+        #print(image.shape)
+        #print(target_landmarks.shape)
+        #print(image_id.shape)
         with tf.GradientTape() as tape:
             _, losses = self.call_model_and_loss(image, target_landmarks, training=True)
             loss = tf.reduce_sum(list(losses.values()))
