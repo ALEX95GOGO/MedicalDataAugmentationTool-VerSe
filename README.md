@@ -15,7 +15,8 @@ Download the files from the [challenge website](https://verse2020.grand-challeng
 
 ## Landmark detection training
 In the folder `training` there are the scripts for training the vertebrae localization networks. Currently they are set up to train the three cross-validation folds as well as train on the whole training set. If you want to see the augmented network input images, set `self.save_debug_images = True`. This will save the images into the folders `debug_train` and `debug_val`. However, as every augmented images will be saved to the hard disk, this could lead to longer training times on slow computers.
-
+`module load cuda/11.6'
+`set_env.sh'
 `python training/main_vertebrae_localization.py`
 
 ## Citation
